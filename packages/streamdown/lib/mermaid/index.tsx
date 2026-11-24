@@ -93,8 +93,12 @@ export const Mermaid = ({
   const ErrorComponent = mermaidContext?.errorComponent;
 
   // Use deferred render hook for optimal performance
+  const deferRender = mermaidContext?.deferRender;
   const { shouldRender, containerRef } = useDeferredRender({
     immediate: fullscreen,
+    root: deferRender?.root,
+    rootMargin: deferRender?.rootMargin,
+    eager: deferRender?.isCached?.(chart) ?? false,
   });
 
   // Mermaid runs renders one after another. While a chart streams, every

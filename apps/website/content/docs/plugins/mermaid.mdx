@@ -598,6 +598,38 @@ Use the `isAnimating` prop to disable interactive controls while content is stre
 
 This prevents users from interacting with incomplete diagrams.
 
+### Deferred Rendering in a Scroll Container
+
+Inline diagrams render when they come within `300px` of the browser viewport, after a short debounce and an idle callback. When your content scrolls inside its own container, such as a chat pane, the browser clips each diagram to that container before it applies the margin. A diagram then starts to render only once it is visible. Use `mermaid.deferRender` to measure against the container instead:
+
+```tsx title="chat.tsx" lineNumbers
+import { Streamdown } from "streamdown";
+import { mermaid } from "@streamdown/mermaid";
+
+const deferRender = {
+  // The container that scrolls the messages
+  root: (target: HTMLElement) => target.closest<HTMLElement>("[data-chat-scroller]"),
+  // Start 1.5 container heights ahead
+  rootMargin: "150% 0px",
+  // Skip the debounce and idle wait for charts your renderer has cached
+  isCached: (chart: string) => svgCache.has(chart),
+};
+
+export default function Chat({ markdown }: { markdown: string }) {
+  return (
+    <Streamdown plugins={{ mermaid }} mermaid={{ deferRender }}>
+      {markdown}
+    </Streamdown>
+  );
+}
+```
+
+- **root** (`(target: HTMLElement) => HTMLElement | null`, optional) - Returns the scroll container for a diagram. Defaults to the browser viewport.
+- **rootMargin** (`string`, optional) - How far ahead of the root a diagram starts to render. Defaults to `"300px"`.
+- **isCached** (`(chart: string) => boolean`, optional) - Returns `true` when your renderer can return the chart without layout work. Such a diagram renders as soon as it comes within `rootMargin`, without the debounce and idle wait.
+
+Define `deferRender` outside the component, or memoize it, so its functions keep their identity between renders.
+
 ## Syntax Reference
 
 ### Flowchart Links

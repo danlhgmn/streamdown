@@ -262,8 +262,29 @@ export interface MermaidErrorComponentProps {
   retry: () => void;
 }
 
+export interface MermaidDeferRenderOptions {
+  /**
+   * Returns true when the renderer can return this chart without layout work, such as from a cache.
+   * Such a diagram renders as soon as it comes within `rootMargin`, without the debounce and idle wait.
+   */
+  isCached?: ((chart: string) => boolean) | undefined;
+  /**
+   * Returns the scroll container to measure the look-ahead against, given the diagram's element.
+   * Set it when the content scrolls inside its own container, such as a chat pane.
+   * @default the browser viewport
+   */
+  root?: ((target: HTMLElement) => HTMLElement | null) | undefined;
+  /**
+   * How far ahead of the root a diagram starts to render, as an IntersectionObserver root margin.
+   * @default "300px"
+   */
+  rootMargin?: string | undefined;
+}
+
 export interface MermaidOptions {
   config?: MermaidConfig | undefined;
+  /** When an inline diagram starts to render. */
+  deferRender?: MermaidDeferRenderOptions | undefined;
   errorComponent?: React.ComponentType<MermaidErrorComponentProps> | undefined;
 }
 

@@ -8,17 +8,23 @@ const TestComponent = ({
   debounceDelay,
   rootMargin,
   idleTimeout,
+  root,
+  eager,
 }: {
   immediate?: boolean;
   debounceDelay?: number;
   rootMargin?: string;
   idleTimeout?: number;
+  root?: (target: Element) => Element | null;
+  eager?: boolean;
 }) => {
   const { shouldRender, containerRef } = useDeferredRender({
     immediate,
     debounceDelay,
     rootMargin,
     idleTimeout,
+    root,
+    eager,
   });
 
   return (
@@ -436,5 +442,49 @@ describe("useDeferredRender", () => {
     });
 
     expect(getByTestId("rendered")).toBeTruthy();
+  });
+
+  it("should observe against the root the root option returns", () => {
+    const { getByTestId } = render(
+      <div data-testid="scroller">
+        <TestComponent root={(target) => target.parentElement} />
+      </div>
+    );
+
+    expect(observerInstances[0].options.root).toBe(getByTestId("scroller"));
+  });
+
+  it("should observe against the viewport without a root option", () => {
+    render(<TestComponent />);
+
+    expect(observerInstances[0].options.root).toBeNull();
+  });
+
+  it("should wait for intersection when eager", () => {
+    const { getByTestId } = render(<TestComponent eager={true} />);
+
+    expect(getByTestId("placeholder")).toBeTruthy();
+  });
+
+  it("should render on intersection without debounce or idle wait when eager", async () => {
+    const { getByTestId } = render(
+      <TestComponent debounceDelay={100} eager={true} idleTimeout={200} />
+    );
+    const observer = observerInstances[0];
+
+    await act(() => {
+      observer.callback(
+        [
+          {
+            isIntersecting: true,
+            target: getByTestId("container"),
+          } as unknown as IntersectionObserverEntry,
+        ],
+        observer as unknown as IntersectionObserver
+      );
+    });
+
+    expect(getByTestId("rendered")).toBeTruthy();
+    expect(observer.disconnect).toHaveBeenCalled();
   });
 });

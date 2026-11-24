@@ -23,6 +23,12 @@ export interface UseDeferredRenderOptions {
    */
   debounceDelay?: number;
   /**
+   * If true, render as soon as the element comes within `rootMargin`, without the debounce and idle wait.
+   * Use it when rendering is cheap, such as when the result is already cached.
+   * @default false
+   */
+  eager?: boolean | undefined;
+  /**
    * Timeout for requestIdleCallback in milliseconds
    * @default DEFERRED_RENDER_IDLE_TIMEOUT
    */
@@ -33,10 +39,17 @@ export interface UseDeferredRenderOptions {
    */
   immediate?: boolean;
   /**
+   * Returns the scroll container to observe against, given the observed element.
+   * Use it when the content scrolls inside its own container: the browser clips the element
+   * to that container before it applies `rootMargin` to the viewport, so the margin has no effect.
+   * @default the browser viewport
+   */
+  root?: ((target: HTMLElement) => HTMLElement | null) | undefined;
+  /**
    * Root margin for Intersection Observer (e.g., '200px' to start rendering 200px before entering viewport)
    * @default DEFERRED_RENDER_ROOT_MARGIN
    */
-  rootMargin?: string;
+  rootMargin?: string | undefined;
 }
 
 /**
@@ -63,6 +76,8 @@ export function useDeferredRender(options: UseDeferredRenderOptions = {}) {
     debounceDelay = DEFERRED_RENDER_DEBOUNCE_DELAY,
     rootMargin = DEFERRED_RENDER_ROOT_MARGIN,
     idleTimeout = DEFERRED_RENDER_IDLE_TIMEOUT,
+    root,
+    eager = false,
   } = options;
 
   const [shouldRender, setShouldRender] = useState(false);
@@ -182,7 +197,11 @@ export function useDeferredRender(options: UseDeferredRenderOptions = {}) {
       entry: IntersectionObserverEntry,
       obs: IntersectionObserver
     ) => {
-      if (entry.isIntersecting) {
+      if (entry.isIntersecting && eager) {
+        clearPendingRenders();
+        setShouldRender(true);
+        obs.disconnect();
+      } else if (entry.isIntersecting) {
         handleIntersecting(obs);
       } else {
         clearPendingRenders();
@@ -196,6 +215,7 @@ export function useDeferredRender(options: UseDeferredRenderOptions = {}) {
         }
       },
       {
+        root: root ? root(container) : null,
         rootMargin,
         threshold: 0,
       }
@@ -217,6 +237,8 @@ export function useDeferredRender(options: UseDeferredRenderOptions = {}) {
     debounceDelay,
     rootMargin,
     idleTimeout,
+    root,
+    eager,
     cancelIdleCallbackWrapper,
     requestIdleCallbackWrapper,
   ]);

@@ -723,4 +723,39 @@ describe("Mermaid Component", () => {
       expect(mockRender).toHaveBeenCalledTimes(2);
     });
   });
+  it("should pass deferRender options to the deferred render observer", () => {
+    const scroller = document.createElement("div");
+    const isCached = vi.fn().mockReturnValue(false);
+    const created: (IntersectionObserverInit | undefined)[] = [];
+    const original = globalThis.IntersectionObserver;
+    globalThis.IntersectionObserver = function (
+      this: Record<string, unknown>,
+      _callback: IntersectionObserverCallback,
+      options?: IntersectionObserverInit
+    ) {
+      created.push(options);
+      this.observe = vi.fn();
+      this.disconnect = vi.fn();
+      this.unobserve = vi.fn();
+      this.takeRecords = vi.fn().mockReturnValue([]);
+    } as unknown as typeof IntersectionObserver;
+
+    try {
+      renderWithContext(<Mermaid chart={simpleChart} />, {
+        mermaid: {
+          deferRender: {
+            root: () => scroller,
+            rootMargin: "150% 0px",
+            isCached,
+          },
+        },
+      });
+
+      expect(created[0]?.root).toBe(scroller);
+      expect(created[0]?.rootMargin).toBe("150% 0px");
+      expect(isCached).toHaveBeenCalledWith(simpleChart);
+    } finally {
+      globalThis.IntersectionObserver = original;
+    }
+  });
 });
